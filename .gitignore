@@ -7,6 +7,15 @@ slurm-*.out
 # C extensions
 *.so
 
+# wandb
+wandb
+
+# conda
+.conda
+
+# model output
+*.pth
+
 # Distribution / packaging
 .Python
 build/
