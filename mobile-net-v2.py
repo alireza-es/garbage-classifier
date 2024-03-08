@@ -17,16 +17,35 @@ data_transforms = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-# Training dataset and dataloader
-train_dataset = datasets.ImageFolder(root=train_data_path, transform=data_transforms)
+
+class SubsetImageFolder(datasets.ImageFolder):
+    def __init__(self, root, transform=None, subset_fraction=1.0):
+        super(SubsetImageFolder, self).__init__(root, transform=transform)
+        
+        # Calculate the number of images to include from each class
+        num_images = int(len(self.imgs) * subset_fraction)
+        
+        # Randomly select a subset of indices to keep
+        self.indices = random.sample(range(len(self.imgs)), num_images)
+        
+        # Keep only the selected subset of images
+        self.imgs = [self.imgs[i] for i in self.indices]
+        self.samples = [self.samples[i] for i in self.indices]
+        self.targets = [self.targets[i] for i in self.indices]
+
+# Define the fraction of the dataset you want to use (e.g., 0.05 for 5%)
+subset_fraction = 0.05
+
+# Training dataset and dataloader using the subset
+train_dataset = SubsetImageFolder(root=train_data_path, transform=data_transforms, subset_fraction=subset_fraction)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-# Validation dataset and dataloader
-valid_dataset = datasets.ImageFolder(root=valid_data_path, transform=data_transforms)
+# Validation dataset and dataloader using the subset
+valid_dataset = SubsetImageFolder(root=valid_data_path, transform=data_transforms, subset_fraction=subset_fraction)
 valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
-# Test dataset and dataloader
-test_dataset = datasets.ImageFolder(root=test_data_path, transform=data_transforms)
+# Test dataset and dataloader using the subset
+test_dataset = SubsetImageFolder(root=test_data_path, transform=data_transforms, subset_fraction=subset_fraction)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 def extract_labels_from_filename(filename):
