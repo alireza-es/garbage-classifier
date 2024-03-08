@@ -4,6 +4,8 @@ from torchvision import datasets, models, transforms
 from torch.utils.data import DataLoader, Subset
 import random
 import wandb
+from torchvision import transforms
+
 
 # Define the number of classes, batch size, and number of epochs
 num_classes = 5  # Replace 5 with your actual number of classes
@@ -25,53 +27,63 @@ wandb.init(project="ENEL645", entity="far-team", config={
     "dataset_fraction": subset_fraction
 })
 
-# Transformations
-from torchvision import transforms
-
-data_transforms = transforms.Compose([
-    transforms.Resize((224, 224)),  # Resize the image to 224x224 pixels
+# Training transformations with data augmentation
+train_transforms = transforms.Compose([
+    transforms.Resize(232),  # Resize the image slightly larger than the final size
+    transforms.CenterCrop(224),  # Crop the image to 224x224 pixels around the center
+    transforms.RandomHorizontalFlip(),  # Randomly flip the image horizontally
+    transforms.RandomVerticalFlip(),  # Randomly flip the image vertically
     transforms.ToTensor(),  # Convert the image to a PyTorch tensor
-    # Normalize the image using ImageNet's mean and standard deviation
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    # Normalize with ImageNet's mean and std
+])
+# Validation and Test transformations without data augmentation
+val_test_transforms = transforms.Compose([
+    transforms.Resize(232),  # Resize the image to the expected input size
+    transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
+
 
 class SubsetImageFolder(datasets.ImageFolder):
     def __init__(self, root, transform=None, subset_fraction=1.0):
         super(SubsetImageFolder, self).__init__(root, transform=transform)
-        
+
         # Calculate the number of images to include from each class
         num_images = int(len(self.imgs) * subset_fraction)
-        
+
         # Randomly select a subset of indices to keep
         self.indices = random.sample(range(len(self.imgs)), num_images)
-        
+
         # Keep only the selected subset of images
         self.imgs = [self.imgs[i] for i in self.indices]
         self.samples = [self.samples[i] for i in self.indices]
         self.targets = [self.targets[i] for i in self.indices]
 
+
 # Training dataset and dataloader using the subset
-train_dataset = SubsetImageFolder(root=train_data_path, transform=data_transforms, subset_fraction=subset_fraction)
+train_dataset = SubsetImageFolder(root=train_data_path, transform=train_transforms, subset_fraction=subset_fraction)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
 # Validation dataset and dataloader using the subset
-valid_dataset = SubsetImageFolder(root=valid_data_path, transform=data_transforms, subset_fraction=subset_fraction)
+valid_dataset = SubsetImageFolder(root=valid_data_path, transform=val_test_transforms, subset_fraction=subset_fraction)
 valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
 # Test dataset and dataloader using the subset
-test_dataset = SubsetImageFolder(root=test_data_path, transform=data_transforms, subset_fraction=subset_fraction)
+test_dataset = SubsetImageFolder(root=test_data_path, transform=val_test_transforms, subset_fraction=subset_fraction)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
 
 def extract_labels_from_filename(filename):
     parts = filename.split('_')[:-1]  # Split by '_' and exclude the last part (number and extension)
     return parts
+
 
 # Example usage inside your training loop
 for inputs, labels in train_loader:
     filenames = [train_dataset.imgs[idx][0].split('/')[-1] for idx in range(len(inputs))]
     additional_labels = [extract_labels_from_filename(filename) for filename in filenames]
     print(additional_labels)  # Do something with these labels
-
 
 # Correctly set up the model
 model = models.mobilenet_v2(pretrained=True)
@@ -128,7 +140,7 @@ for epoch in range(num_epochs):
     # Inside your validation loop after loss calculation
     wandb.log({"valid_loss": valid_loss})
 
-    print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Validation Loss: {valid_loss:.4f}')
+    print(f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss:.4f}, Validation Loss: {valid_loss:.4f}')
 
 # Testing Loop and any other components follow the same pattern.
 model.eval()  # Set the model to evaluation mode
