@@ -8,7 +8,7 @@ from torchvision import transforms
 
 
 # Define the number of classes, batch size, and number of epochs
-num_classes = 5  # Replace 5 with your actual number of classes
+num_classes = 4  # Replace 5 with your actual number of classes
 batch_size = 32  # Example batch size, adjust as needed
 num_epochs = 10  # Example number of epochs, adjust as needed
 train_data_path = "/work/TALC/enel645_2024w/CVPR_2024_dataset/Train"
@@ -72,18 +72,6 @@ valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 # Test dataset and dataloader using the subset
 test_dataset = SubsetImageFolder(root=test_data_path, transform=val_test_transforms, subset_fraction=subset_fraction)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-
-def extract_labels_from_filename(filename):
-    parts = filename.split('_')[:-1]  # Split by '_' and exclude the last part (number and extension)
-    return parts
-
-
-# Example usage inside your training loop
-for inputs, labels in train_loader:
-    filenames = [train_dataset.imgs[idx][0].split('/')[-1] for idx in range(len(inputs))]
-    additional_labels = [extract_labels_from_filename(filename) for filename in filenames]
-    print(additional_labels)  # Do something with these labels
 
 # Correctly set up the model
 model = models.mobilenet_v2(pretrained=True)

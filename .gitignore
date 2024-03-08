@@ -13,9 +13,6 @@ wandb
 # conda
 .conda
 
-# model output
-*.pth
-
 # Distribution / packaging
 .Python
 build/
