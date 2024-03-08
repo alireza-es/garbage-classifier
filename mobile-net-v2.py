@@ -13,7 +13,7 @@ train_data_path = "/work/TALC/enel645_2024w/CVPR_2024_dataset/Train"
 valid_data_path = "/work/TALC/enel645_2024w/CVPR_2024_dataset/Validation"
 test_data_path = "/work/TALC/enel645_2024w/CVPR_2024_dataset/Test"
 # Define the fraction of the dataset you want to use (e.g., 0.05 for 5%)
-subset_fraction = 0.05
+subset_fraction = 1
 
 # Init wandb
 wandb.init(project="ENEL645", entity="far-team", config={
@@ -26,11 +26,14 @@ wandb.init(project="ENEL645", entity="far-team", config={
 })
 
 # Transformations
-data_transforms = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-])
+from torchvision import transforms
 
+data_transforms = transforms.Compose([
+    transforms.Resize((224, 224)),  # Resize the image to 224x224 pixels
+    transforms.ToTensor(),  # Convert the image to a PyTorch tensor
+    # Normalize the image using ImageNet's mean and standard deviation
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
 
 class SubsetImageFolder(datasets.ImageFolder):
     def __init__(self, root, transform=None, subset_fraction=1.0):
@@ -107,7 +110,7 @@ for epoch in range(num_epochs):
 
     train_loss = train_loss / len(train_loader.dataset)
     # Inside your training loop after loss calculation
-    wandb.log({"train_loss": train_loss / len(train_loader.dataset)})
+    wandb.log({"train_loss": train_loss})
 
     # Validation Loop
     model.eval()  # Set the model to evaluation mode
@@ -123,7 +126,7 @@ for epoch in range(num_epochs):
 
     valid_loss = valid_loss / len(valid_loader.dataset)
     # Inside your validation loop after loss calculation
-    wandb.log({"valid_loss": valid_loss / len(valid_loader.dataset)})
+    wandb.log({"valid_loss": valid_loss})
 
     print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Validation Loss: {valid_loss:.4f}')
 
