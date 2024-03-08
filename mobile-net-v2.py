@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 from torchvision import datasets, models, transforms
-from torch.utils.data import DataLoader
-
+from torch.utils.data import DataLoader, Subset
+import random
 # Define the number of classes, batch size, and number of epochs
 num_classes = 5  # Replace 5 with your actual number of classes
 batch_size = 32  # Example batch size, adjust as needed
