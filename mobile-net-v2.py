@@ -3,6 +3,8 @@ import torch.nn as nn
 from torchvision import datasets, models, transforms
 from torch.utils.data import DataLoader, Subset
 import random
+import wandb
+
 # Define the number of classes, batch size, and number of epochs
 num_classes = 5  # Replace 5 with your actual number of classes
 batch_size = 32  # Example batch size, adjust as needed
@@ -10,6 +12,18 @@ num_epochs = 10  # Example number of epochs, adjust as needed
 train_data_path = "/work/TALC/enel645_2024w/CVPR_2024_dataset/Train"
 valid_data_path = "/work/TALC/enel645_2024w/CVPR_2024_dataset/Validation"
 test_data_path = "/work/TALC/enel645_2024w/CVPR_2024_dataset/Test"
+# Define the fraction of the dataset you want to use (e.g., 0.05 for 5%)
+subset_fraction = 0.05
+
+# Init wandb
+wandb.init(project="ENEL645", entity="far-team", config={
+    "num_classes": num_classes,
+    "batch_size": batch_size,
+    "num_epochs": num_epochs,
+    "learning_rate": 0.001,
+    "model_name": "MobileNetV2",
+    "dataset_fraction": subset_fraction
+})
 
 # Transformations
 data_transforms = transforms.Compose([
@@ -32,9 +46,6 @@ class SubsetImageFolder(datasets.ImageFolder):
         self.imgs = [self.imgs[i] for i in self.indices]
         self.samples = [self.samples[i] for i in self.indices]
         self.targets = [self.targets[i] for i in self.indices]
-
-# Define the fraction of the dataset you want to use (e.g., 0.05 for 5%)
-subset_fraction = 0.05
 
 # Training dataset and dataloader using the subset
 train_dataset = SubsetImageFolder(root=train_data_path, transform=data_transforms, subset_fraction=subset_fraction)
@@ -65,10 +76,12 @@ model.classifier[1] = nn.Linear(model.last_channel, num_classes)  # Adjust the c
 
 # Define the device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model.to(device)  # Move the model to the specified device
+# Move the model to the specified device
+model.to(device)
 
 # Define the loss function and optimizer
 criterion = nn.CrossEntropyLoss()
+wandb.watch(model, criterion, log="all", log_freq=10)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 # Rest of your setup (data loaders, etc.) appears correct
@@ -93,6 +106,8 @@ for epoch in range(num_epochs):
         train_loss += loss.item() * inputs.size(0)
 
     train_loss = train_loss / len(train_loader.dataset)
+    # Inside your training loop after loss calculation
+    wandb.log({"train_loss": train_loss / len(train_loader.dataset)})
 
     # Validation Loop
     model.eval()  # Set the model to evaluation mode
@@ -107,6 +122,8 @@ for epoch in range(num_epochs):
             valid_loss += loss.item() * inputs.size(0)
 
     valid_loss = valid_loss / len(valid_loader.dataset)
+    # Inside your validation loop after loss calculation
+    wandb.log({"valid_loss": valid_loss / len(valid_loader.dataset)})
 
     print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Validation Loss: {valid_loss:.4f}')
 
@@ -130,6 +147,7 @@ with torch.no_grad():
 
 test_loss = test_loss / len(test_loader.dataset)
 test_accuracy = 100 * correct / total
+wandb.log({"test_accuracy": test_accuracy})
 
 print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.2f}%')
 
@@ -143,3 +161,4 @@ torch.save({
 checkpoint = torch.load('model_checkpoint.pth')
 model.load_state_dict(checkpoint['model_state_dict'])
 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+wandb.finish()
